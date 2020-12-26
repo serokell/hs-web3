@@ -18,7 +18,7 @@ module Network.Ethereum.Api.Eth where
 import           Data.ByteArray.HexString   (HexString)
 import           Data.Solidity.Prim.Address (Address)
 import           Data.Text                  (Text)
-import           Network.Ethereum.Api.Types (Block, Call, Change, DefaultBlock,
+import           Network.Ethereum.Api.Types (Block, BlockT, Call, Change, DefaultBlock,
                                              Filter, Quantity, SyncingState,
                                              Transaction, TxReceipt)
 import           Network.JsonRpc.TinyClient (JsonRpc (..))
@@ -144,6 +144,16 @@ call = remote "eth_call"
 estimateGas :: JsonRpc m => Call -> m Quantity
 {-# INLINE estimateGas #-}
 estimateGas = remote "eth_estimateGas"
+
+-- | Returns information about a block by hash.
+getBlockByHashLite :: JsonRpc m => HexString -> m (BlockT HexString)
+{-# INLINE getBlockByHashLite #-}
+getBlockByHashLite = flip (remote "eth_getBlockByHash") False
+
+-- | Returns information about a block by block number.
+getBlockByNumberLite :: JsonRpc m => Quantity -> m (BlockT HexString)
+{-# INLINE getBlockByNumberLite #-}
+getBlockByNumberLite = flip (remote "eth_getBlockByNumber") False
 
 -- | Returns information about a block by hash.
 getBlockByHash :: JsonRpc m => HexString -> m Block

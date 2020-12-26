@@ -19,8 +19,8 @@
 module Network.Ethereum.Api.Types where
 
 import           Data.Aeson                 (FromJSON (..), Options (fieldLabelModifier, omitNothingFields),
-                                             ToJSON (..), Value (Bool, String),
-                                             defaultOptions, object, (.=))
+                                             ToJSON (..), Value (Bool, Object, String),
+                                             defaultOptions, object, (.=), (.:), (.:?))
 import           Data.Aeson.TH              (deriveJSON)
 import           Data.ByteArray.HexString   (HexString)
 import           Data.Char                  (toLower)
@@ -249,8 +249,10 @@ data Transaction = Transaction
 $(deriveJSON (defaultOptions
     { fieldLabelModifier = over _head toLower . drop 2 }) ''Transaction)
 
+type Block = BlockT Transaction
+
 -- | Block information.
-data Block = Block
+data BlockT tx = Block
     { blockNumber           :: !(Maybe Quantity)
     -- ^ QUANTITY - the block number. null when its pending block.
     , blockHash             :: !(Maybe HexString)
@@ -267,7 +269,7 @@ data Block = Block
     -- ^ DATA, 32 Bytes - the root of the transaction trie of the block.
     , blockStateRoot        :: !HexString
     -- ^ DATA, 32 Bytes - the root of the final state trie of the block.
-    , blockReceiptRoot      :: !(Maybe HexString)
+    , blockReceiptsRoot     :: !(Maybe HexString)
     -- ^ DATA, 32 Bytes - the root of the receipts trie of the block.
     , blockMiner            :: !Address
     -- ^ DATA, 20 Bytes - the address of the beneficiary to whom the mining rewards were given.
@@ -285,12 +287,32 @@ data Block = Block
     -- ^ QUANTITY - the total used gas by all transactions in this block.
     , blockTimestamp        :: !Quantity
     -- ^ QUANTITY - the unix timestamp for when the block was collated.
-    , blockTransactions     :: ![Transaction]
+    , blockTransactions     :: ![tx]
     -- ^ Array of transaction objects.
     , blockUncles           :: ![HexString]
     -- ^ Array - Array of uncle hashes.
     }
     deriving (Show, Generic)
 
-$(deriveJSON (defaultOptions
-    { fieldLabelModifier = over _head toLower . drop 5 }) ''Block)
+instance FromJSON tx => FromJSON (BlockT tx) where
+  parseJSON (Object v) = Block
+    <$> v .:? "number"
+    <*> v .:? "hash"
+    <*> v .: "parentHash"
+    <*> v .:? "nonce"
+    <*> v .: "sha3Uncles"
+    <*> v .:? "logsBloom"
+    <*> v .: "transactionsRoot"
+    <*> v .: "stateRoot"
+    <*> v .:? "receiptsRoot"
+    <*> v .: "miner"
+    <*> v .: "difficulty"
+    <*> v .: "totalDifficulty"
+    <*> v .: "extraData"
+    <*> v .: "size"
+    <*> v .: "gasLimit"
+    <*> v .: "gasUsed"
+    <*> v .: "timestamp"
+    <*> v .: "transactions"
+    <*> v .: "uncles"
+  parseJSON _ = fail "Failed to parse BlockT"
